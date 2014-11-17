@@ -1,0 +1,92 @@
+---
+title: "Impact of Weather Events in Health and Economics in the US"
+author: "Jose Roberto Ayala Solares"
+output: html_document
+---
+
+## Synopsis
+
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.The events in the database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+In particular, we are concerned in answering the following questions:
+
+1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+2. Across the United States, which types of events have the greatest economic consequences?
+
+## Data Processing
+
+The data that we will use for the analysis can be downloaded from the following [link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The code below checks if the data has been downloaded. If not, it downloads it and saves it in the current directory. The data is then read into R and store for future use.
+
+```{r}
+# Check if dataset already exists
+if (!file.exists("StormData.csv.bz2")) {
+    fileURL <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
+    download.file(fileURL, destfile='StormData.csv.bz2', method = 'curl')
+}
+
+# Read data
+stormData <- read.csv(bzfile("StormData.csv.bz2"))
+
+# Record date of download
+downloadedData <- date()
+```
+
+For this analysis, the data was downloaded on `r downloadedData`.
+
+The data consists of **902297** observations, each with **37** variables. The names of each of the ariables are:
+
+```{r}
+names(stormData)
+```
+
+The class of each of the variables is summarized below:
+
+```{r}
+str(stormData)
+```
+
+From the structure of the data, we can observe that the variables **EVTYPE** (type of event), **FATALITIES** (number of fatalities), and **INJURIES** (number of injuries) are ready to be used for analysis. First, we activate the libraries 'dplyr' and 'ggplot2'. Then we count the number of fatalities and injuries based on the type of event, arrange them in descending order, and store them in two different data frames. From each, we select only the top 10 causes for visualization purposes.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+
+fatalities <- stormData %>%
+    group_by(EVTYPE) %>%
+    summarise(count = sum(FATALITIES)) %>%
+    arrange(desc(count))
+fatalities <- fatalities[1:10, ]
+
+injuries <- stormData %>%
+    group_by(EVTYPE) %>%
+    summarise(count = sum(INJURIES)) %>%
+    arrange(desc(count))
+injuries <- injuries[1:10, ]
+```
+
+However, the variables **PROPDMG** (property damage) and **PROPDMGEXP** (property damage exponential) require some processing before they can be used for analysis.
+
+## Results
+```{r}
+ggplot(data = fatalities[1:10, ], aes(x = reorder(EVTYPE, count), y = count )) + 
+    geom_bar(stat = "identity", aes(fill = count)) +
+    scale_fill_continuous(low = "blue", high = "red") +
+    coord_flip() +
+    ylab("Number of Fatalities") +
+    xlab("Type of Event") +
+    ggtitle("Top 10 Weather Events for Fatalities")
+```
+
+```{r}
+ggplot(data = injuries[1:10, ], aes(x = reorder(EVTYPE, count), y = count )) + 
+    geom_bar(stat = "identity", aes(fill = count)) +
+    scale_fill_continuous(low = "blue", high = "red") +
+    coord_flip() +
+    ylab("Number of Injuries") +
+    xlab("Type of Event") +
+    ggtitle("Top 10 Weather Events for Injuries")
+```
+

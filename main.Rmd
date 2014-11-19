@@ -35,7 +35,7 @@ downloadedData <- date()
 
 For this analysis, the data was downloaded on `r downloadedData`.
 
-The data consists of **902297** observations, each with **37** variables. The names of each of the ariables are:
+The data consists of **902297** observations, each with **37** variables. The names of each of the variables are:
 
 ```{r}
 names(stormData)
@@ -52,24 +52,38 @@ From the structure of the data, we can observe that the variables **EVTYPE** (ty
 ```{r}
 library(dplyr)
 library(ggplot2)
-library(RColorBrewer)
 
-fatalities <- stormData %>%
-    group_by(EVTYPE) %>%
-    summarise(count = sum(FATALITIES)) %>%
-    arrange(desc(count))
-fatalities <- fatalities[1:10, ]
+fatalities <- stormData %>% 
+    count(EVTYPE, wt = FATALITIES, sort = TRUE) %>% 
+    slice(1:10)
 
-injuries <- stormData %>%
-    group_by(EVTYPE) %>%
-    summarise(count = sum(INJURIES)) %>%
-    arrange(desc(count))
-injuries <- injuries[1:10, ]
+injuries <- stormData %>% 
+    count(EVTYPE, wt = INJURIES, sort = TRUE) %>% 
+    slice(1:10)
 ```
 
-However, the variables **PROPDMG** (property damage) and **PROPDMGEXP** (property damage exponential) require some processing before they can be used for analysis.
+However, the variables **PROPDMG** (property damage) and **PROPDMGEXP** (property damage exponential) require some processing before they can be used for analysis. These two variables work in the following way: tha variable **PROPDMGEXP** contains the number of zeros that follows the quantity stored in the variable **PROPDMG**. A summary on the variable **PROPDMGEXP** shows us the following:
+
+```{r}
+with(stormData, summary(PROPDMGEXP))
+```
+
+Apart from the numbers 0-8, there are a couple of letters and symbols. We transform these using the following code, which create a new variable called **TOTAL.COST**:
+
+```{r}
+exponents <- vector(mode = "numeric", length = dim(stormData)[1])
+exponents[stormData$PROPDMGEXP == "H" | stormData$PROPDMGEXP == "h"] <- 2
+exponents[stormData$PROPDMGEXP == "K" | stormData$PROPDMGEXP == "k"] <- 3
+exponents[stormData$PROPDMGEXP == "M" | stormData$PROPDMGEXP == "m"] <- 6
+exponents[stormData$PROPDMGEXP == "B" | stormData$PROPDMGEXP == "b"] <- 9
+stormData <- stormData %>%
+    mutate(TOTAL.COST = PROPDMG * 10 ^ exponents)
+```
 
 ## Results
+
+Using the data frames `fatalities` and *injuries* created in the previous section, we can obtain the following histograms. Both histograms agree that the weather event with more fatalities and injuries are **Tornadoes** with 5633 fatalities and 91346 injuries respectively.
+
 ```{r}
 ggplot(data = fatalities[1:10, ], aes(x = reorder(EVTYPE, count), y = count )) + 
     geom_bar(stat = "identity", aes(fill = count)) +

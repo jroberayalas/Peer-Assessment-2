@@ -47,20 +47,24 @@ The class of each of the variables is summarized below:
 str(stormData)
 ```
 
-From the structure of the data, we can observe that the variables **EVTYPE** (type of event), **FATALITIES** (number of fatalities), and **INJURIES** (number of injuries) are ready to be used for analysis. First, we activate the libraries 'dplyr', 'ggplot2' and 'gridExtra'. Then we count the number of fatalities and injuries based on the type of event, arrange them in descending order, and store them in two different data frames. From each, we select only the top 10 causes for visualization purposes.
+From the structure of the data, we can observe that the variables **EVTYPE** (type of event), **FATALITIES** (number of fatalities), and **INJURIES** (number of injuries) are ready to be used for analysis. First, we activate the libraries `dplyr`, `ggplot2` and `gridExtra`. Then we count the number of fatalities and injuries based on the type of event, arrange them in descending order, and store them in two different data frames. From each, we select only the top 10 causes for visualization purposes.
 
 ```{r summarise1}
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
 
-fatalities <- stormData %>% 
-    count(EVTYPE, wt = FATALITIES, sort = TRUE) %>% 
-    slice(1:10)
+fatalities <- stormData %>%
+    group_by(EVTYPE) %>%
+    summarise(count = sum(FATALITIES)) %>%
+    arrange(desc(count))
+fatalities <- fatalities[1:10, ]
 
-injuries <- stormData %>% 
-    count(EVTYPE, wt = INJURIES, sort = TRUE) %>% 
-    slice(1:10)
+injuries <- stormData %>%
+    group_by(EVTYPE) %>%
+    summarise(count = sum(INJURIES)) %>%
+    arrange(desc(count))
+injuries <- injuries[1:10, ]
 ```
 
 However, the variables **PROPDMG** (property damage), **PROPDMGEXP** (property damage exponential), **CROPDMG** (crop damage) and **CROPDMGEXP** (crop damage exponential) require some processing before they can be used for analysis. These four variables work in the following way: tha variables **PROPDMGEXP** and **CROPDMGEXP** contain the number of zeros that follow the quantities stored in the variables **PROPDMG** and **CROPDMG**. First, let's work with the variables **PROPDMG** and **PROPDMGEXP**. A summary on the variable **PROPDMGEXP** shows us the following:
@@ -69,7 +73,7 @@ However, the variables **PROPDMG** (property damage), **PROPDMGEXP** (property d
 with(stormData, summary(PROPDMGEXP))
 ```
 
-Apart from the numbers 0-8, there are a couple of letters and symbols. We transform these using the following code, which create a new variable called **TOTAL.COST.PROP**:
+Apart from the numbers 0-8, there are a couple of letters and symbols. Here H (or h) represents an exponent of 2, K (or k) and exponent of 3, M (or m) an exponent of 6, and B (or b) an exponent of 9. We transform these using the following code, which create a new variable called **TOTAL.COST.PROP**:
 
 ```{r exponents1}
 # Set all exponents to zero
@@ -133,48 +137,48 @@ names(total.cost.CROP) <- c("EVTYPE", "Cost")
 
 ### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
 
-Using the data frames `fatalities` and *injuries* created in the previous section, we can obtain the following histograms. Both histograms agree that the weather event with more fatalities and injuries are **Tornadoes** with 5633 fatalities and 91346 injuries respectively.
+Using the data frames `fatalities` and `injuries` created in the previous section, we can obtain the following histograms. Both histograms agree that the weather event with more fatalities and injuries are **Tornadoes** with 5633 fatalities and 91346 injuries respectively.
 
 ```{r plot1}
-fatalitiesPlot <- ggplot(data = fatalities, aes(x = reorder(EVTYPE, count), y = count)) + 
+fatalitiesPlot <- ggplot(data = fatalities, aes(x = reorder(EVTYPE, rev(count)), y = count)) + 
     geom_bar(stat = "identity", aes(fill = count)) +
     scale_fill_continuous(low = "blue", high = "red") +
-    coord_flip() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylab("Number of Fatalities") +
     xlab("Type of Event") +
-    ggtitle("Top 10 Weather Events for Fatalities")
+    ggtitle("Top 10 Weather Events\n for Fatalities")
 
-injuriesPlot <- ggplot(data = injuries, aes(x = reorder(EVTYPE, count), y = count)) + 
+injuriesPlot <- ggplot(data = injuries, aes(x = reorder(EVTYPE, rev(count)), y = count)) + 
     geom_bar(stat = "identity", aes(fill = count)) +
     scale_fill_continuous(low = "blue", high = "red") +
-    coord_flip() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylab("Number of Injuries") +
     xlab("Type of Event") +
-    ggtitle("Top 10 Weather Events for Injuries")
+    ggtitle("Top 10 Weather Events\n for Injuries")
 
 grid.arrange(fatalitiesPlot, injuriesPlot, ncol = 2)
 ```
 
 ### Across the United States, which types of events have the greatest economic consequences?
 
-Using the data frames `total.cost.PROP` and *total.cost.CROP* created in the previous section, we can obtain the following histograms. In the first one we can observe that the most serious weather event for property damage have been **Floods** with a cost ascending to 144 billion dollars. On the other hand, the most serious weather event for crop damage has been **Drought** with a damage cost of around 13 billion dollars.
+Using the data frames `total.cost.PROP` and `total.cost.CROP` created in the previous section, we can obtain the following histograms. In the first one we can observe that the most serious weather event for property damage have been **Floods** with a cost ascending to 144 billion dollars. On the other hand, the most serious weather event for crop damage has been **Drought** with a damage cost of approximately 14 billion dollars.
 
 ```{r plot2}
-propPlot <- ggplot(data = total.cost.PROP, aes(x = reorder(EVTYPE, Cost), y = Cost)) + 
+propPlot <- ggplot(data = total.cost.PROP, aes(x = reorder(EVTYPE, rev(Cost)), y = Cost)) + 
     geom_bar(stat = "identity", aes(fill = Cost)) +
     scale_fill_continuous(low = "blue", high = "red") +
-    coord_flip() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylab("Cost (in billions of US dollars)") +
     xlab("Type of Event") +
-    ggtitle("Top 10 Weather Events for Property Damage")
+    ggtitle("Top 10 Weather Events\n for Property Damage")
 
-cropPlot <- ggplot(data = total.cost.CROP, aes(x = reorder(EVTYPE, Cost), y = Cost)) + 
+cropPlot <- ggplot(data = total.cost.CROP, aes(x = reorder(EVTYPE, rev(Cost)), y = Cost)) + 
     geom_bar(stat = "identity", aes(fill = Cost)) +
     scale_fill_continuous(low = "blue", high = "red") +
-    coord_flip() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylab("Cost (in billions of US dollars)") +
     xlab("Type of Event") +
-    ggtitle("Top 10 Weather Events for Crop Damage")
+    ggtitle("Top 10 Weather Events\n for Crop Damage")
 
 grid.arrange(propPlot, cropPlot, ncol = 2)
 ```

@@ -19,7 +19,7 @@ In particular, we are concerned in answering the following questions:
 
 The data that we will use for the analysis can be downloaded from the following [link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). The code below checks if the data has been downloaded. If not, it downloads it and saves it in the current directory. The data is then read into R and store for future use.
 
-```{r}
+```{r readData, cache=TRUE}
 # Check if dataset already exists
 if (!file.exists("StormData.csv.bz2")) {
     fileURL <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
@@ -37,21 +37,22 @@ For this analysis, the data was downloaded on `r downloadedData`.
 
 The data consists of **902297** observations, each with **37** variables. The names of each of the variables are:
 
-```{r}
+```{r names}
 names(stormData)
 ```
 
 The class of each of the variables is summarized below:
 
-```{r}
+```{r structure}
 str(stormData)
 ```
 
-From the structure of the data, we can observe that the variables **EVTYPE** (type of event), **FATALITIES** (number of fatalities), and **INJURIES** (number of injuries) are ready to be used for analysis. First, we activate the libraries 'dplyr' and 'ggplot2'. Then we count the number of fatalities and injuries based on the type of event, arrange them in descending order, and store them in two different data frames. From each, we select only the top 10 causes for visualization purposes.
+From the structure of the data, we can observe that the variables **EVTYPE** (type of event), **FATALITIES** (number of fatalities), and **INJURIES** (number of injuries) are ready to be used for analysis. First, we activate the libraries 'dplyr', 'ggplot2' and 'gridExtra'. Then we count the number of fatalities and injuries based on the type of event, arrange them in descending order, and store them in two different data frames. From each, we select only the top 10 causes for visualization purposes.
 
-```{r}
+```{r summarise1}
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
 
 fatalities <- stormData %>% 
     count(EVTYPE, wt = FATALITIES, sort = TRUE) %>% 
@@ -62,45 +63,118 @@ injuries <- stormData %>%
     slice(1:10)
 ```
 
-However, the variables **PROPDMG** (property damage) and **PROPDMGEXP** (property damage exponential) require some processing before they can be used for analysis. These two variables work in the following way: tha variable **PROPDMGEXP** contains the number of zeros that follows the quantity stored in the variable **PROPDMG**. A summary on the variable **PROPDMGEXP** shows us the following:
+However, the variables **PROPDMG** (property damage), **PROPDMGEXP** (property damage exponential), **CROPDMG** (crop damage) and **CROPDMGEXP** (crop damage exponential) require some processing before they can be used for analysis. These four variables work in the following way: tha variables **PROPDMGEXP** and **CROPDMGEXP** contain the number of zeros that follow the quantities stored in the variables **PROPDMG** and **CROPDMG**. First, let's work with the variables **PROPDMG** and **PROPDMGEXP**. A summary on the variable **PROPDMGEXP** shows us the following:
 
-```{r}
+```{r summarise2}
 with(stormData, summary(PROPDMGEXP))
 ```
 
-Apart from the numbers 0-8, there are a couple of letters and symbols. We transform these using the following code, which create a new variable called **TOTAL.COST**:
+Apart from the numbers 0-8, there are a couple of letters and symbols. We transform these using the following code, which create a new variable called **TOTAL.COST.PROP**:
 
-```{r}
+```{r exponents1}
+# Set all exponents to zero
 exponents <- vector(mode = "numeric", length = dim(stormData)[1])
-exponents[stormData$PROPDMGEXP == "H" | stormData$PROPDMGEXP == "h"] <- 2
-exponents[stormData$PROPDMGEXP == "K" | stormData$PROPDMGEXP == "k"] <- 3
-exponents[stormData$PROPDMGEXP == "M" | stormData$PROPDMGEXP == "m"] <- 6
+
+# Check for different patterns and assign the corresponding value
+exponents[stormData$PROPDMGEXP == "1"] <- 1
+exponents[stormData$PROPDMGEXP == "H" | stormData$PROPDMGEXP == "h" | stormData$PROPDMGEXP == "2"] <- 2
+exponents[stormData$PROPDMGEXP == "K" | stormData$PROPDMGEXP == "k" | stormData$PROPDMGEXP == "3"] <- 3
+exponents[stormData$PROPDMGEXP == "4"] <- 4
+exponents[stormData$PROPDMGEXP == "5"] <- 5
+exponents[stormData$PROPDMGEXP == "M" | stormData$PROPDMGEXP == "m" | stormData$PROPDMGEXP == "6"] <- 6
+exponents[stormData$PROPDMGEXP == "7"] <- 7
+exponents[stormData$PROPDMGEXP == "8"] <- 8
 exponents[stormData$PROPDMGEXP == "B" | stormData$PROPDMGEXP == "b"] <- 9
 stormData <- stormData %>%
-    mutate(TOTAL.COST = PROPDMG * 10 ^ exponents)
+    mutate(TOTAL.COST.PROP = PROPDMG * 10 ^ exponents)
+```
+
+We repeat the process for the variables **CROPDMG** and **CROPDMGEXP**.
+
+```{r summarise3}
+with(stormData, summary(CROPDMGEXP))
+```
+
+```{r exponents2}
+# Set all exponents to zero
+exponents <- vector(mode = "numeric", length = dim(stormData)[1])
+
+# Check for different patterns and assign the corresponding value
+exponents[stormData$CROPDMGEXP == "1"] <- 1
+exponents[stormData$CROPDMGEXP == "H" | stormData$CROPDMGEXP == "h" | stormData$CROPDMGEXP == "2"] <- 2
+exponents[stormData$CROPDMGEXP == "K" | stormData$CROPDMGEXP == "k" | stormData$CROPDMGEXP == "3"] <- 3
+exponents[stormData$CROPDMGEXP == "4"] <- 4
+exponents[stormData$CROPDMGEXP == "5"] <- 5
+exponents[stormData$CROPDMGEXP == "M" | stormData$CROPDMGEXP == "m" | stormData$CROPDMGEXP == "6"] <- 6
+exponents[stormData$CROPDMGEXP == "7"] <- 7
+exponents[stormData$CROPDMGEXP == "8"] <- 8
+exponents[stormData$CROPDMGEXP == "B" | stormData$CROPDMGEXP == "b"] <- 9
+stormData <- stormData %>%
+    mutate(TOTAL.COST.CROP = CROPDMG * 10 ^ exponents)
+```
+
+Using these new variables, we can summarize the information based on the type of event and store them in new data frames. Only the top 10 causes for visualization purposes.
+
+```{r summarise4}
+total.cost.PROP <- stormData %>% 
+    count(EVTYPE, wt = TOTAL.COST.PROP, sort = TRUE) %>% 
+    slice(1:10) %>%
+    mutate(n = n / 1e9)
+names(total.cost.PROP) <- c("EVTYPE", "Cost")
+
+total.cost.CROP <- stormData %>% 
+    count(EVTYPE, wt = TOTAL.COST.CROP, sort = TRUE) %>% 
+    slice(1:10) %>%
+    mutate(n = n / 1e9)
+names(total.cost.CROP) <- c("EVTYPE", "Cost")
 ```
 
 ## Results
 
+### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
 Using the data frames `fatalities` and *injuries* created in the previous section, we can obtain the following histograms. Both histograms agree that the weather event with more fatalities and injuries are **Tornadoes** with 5633 fatalities and 91346 injuries respectively.
 
-```{r}
-ggplot(data = fatalities[1:10, ], aes(x = reorder(EVTYPE, count), y = count )) + 
+```{r plot1}
+fatalitiesPlot <- ggplot(data = fatalities, aes(x = reorder(EVTYPE, count), y = count)) + 
     geom_bar(stat = "identity", aes(fill = count)) +
     scale_fill_continuous(low = "blue", high = "red") +
     coord_flip() +
     ylab("Number of Fatalities") +
     xlab("Type of Event") +
     ggtitle("Top 10 Weather Events for Fatalities")
-```
 
-```{r}
-ggplot(data = injuries[1:10, ], aes(x = reorder(EVTYPE, count), y = count )) + 
+injuriesPlot <- ggplot(data = injuries, aes(x = reorder(EVTYPE, count), y = count)) + 
     geom_bar(stat = "identity", aes(fill = count)) +
     scale_fill_continuous(low = "blue", high = "red") +
     coord_flip() +
     ylab("Number of Injuries") +
     xlab("Type of Event") +
     ggtitle("Top 10 Weather Events for Injuries")
+
+grid.arrange(fatalitiesPlot, injuriesPlot, ncol = 2)
 ```
 
+### Across the United States, which types of events have the greatest economic consequences?
+
+Using the data frames `total.cost.PROP` and *total.cost.CROP* created in the previous section, we can obtain the following histograms. In the first one we can observe that the most serious weather event for property damage have been **Floods** with a cost ascending to 144 billion dollars. On the other hand, the most serious weather event for crop damage has been **Drought** with a damage cost of around 13 billion dollars.
+
+```{r plot2}
+propPlot <- ggplot(data = total.cost.PROP, aes(x = reorder(EVTYPE, Cost), y = Cost)) + 
+    geom_bar(stat = "identity", aes(fill = Cost)) +
+    scale_fill_continuous(low = "blue", high = "red") +
+    coord_flip() +
+    ylab("Cost (in billions of US dollars)") +
+    xlab("Type of Event") +
+    ggtitle("Top 10 Weather Events for Property Damage")
+
+cropPlot <- ggplot(data = total.cost.CROP, aes(x = reorder(EVTYPE, Cost), y = Cost)) + 
+    geom_bar(stat = "identity", aes(fill = Cost)) +
+    scale_fill_continuous(low = "blue", high = "red") +
+    coord_flip() +
+    ylab("Cost (in billions of US dollars)") +
+    xlab("Type of Event") +
+    ggtitle("Top 10 Weather Events for Crop Damage")
+
+grid.arrange(propPlot, cropPlot, ncol = 2)
+```
